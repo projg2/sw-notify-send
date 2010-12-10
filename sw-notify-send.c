@@ -63,10 +63,6 @@ char *_findenv(const proc_t* const p, const char* const keystr) {
 	return NULL;
 }
 
-#define findenv(p, key) _findenv(p, key "=")
-#define canfail(expr) if (expr) perror(#expr " failed (ignoring)")
-#define cantfail(expr) if (expr) { perror(#expr " failed (aborting)"); exit(1); }
-
 /* Get the /proc/<pid>/root path suitable for chroot() call or return
  * NULL if chroot not possible/necessary. */
 const char* getroot(int pid) {
@@ -81,6 +77,10 @@ const char* getroot(int pid) {
 		return NULL;
 }
 
+#define FINDENV(p, key) _findenv(p, key "=")
+#define CANFAIL(expr) if (expr) perror(#expr " failed (ignoring)")
+#define CANTFAIL(expr) if (expr) { perror(#expr " failed (aborting)"); exit(1); }
+
 /* Fork and call notify-send for particular dbus session. */
 void send_notify(char* const display, char* const xauth,
 		uid_t uid, const char* const root, char* const argv[]) {
@@ -88,11 +88,11 @@ void send_notify(char* const display, char* const xauth,
 	if (fork() == 0) {
 #ifdef HAVE_CHROOT
 		if (root)
-			canfail(chroot(root));
+			CANFAIL(chroot(root));
 #endif
-		canfail(setuid(uid));
-		cantfail(putenv(display));
-		cantfail(putenv(xauth));
+		CANFAIL(setuid(uid));
+		CANTFAIL(putenv(display));
+		CANTFAIL(putenv(xauth));
 
 		execvp("notify-send", argv);
 		perror("execvp() returned");
@@ -115,8 +115,8 @@ int main(int argc, char* const argv[]) {
 
 	while (((p = readproc(proc, p)))) {
 		if (validateproc(p)) {
-			char* const display = findenv(p, "DISPLAY");
-			char* xauth = findenv(p, "XAUTHORITY");
+			char* const display = FINDENV(p, "DISPLAY");
+			char* xauth = FINDENV(p, "XAUTHORITY");
 			const struct passwd* const pw = getpwuid(p->euid);
 			char *xauthbuf = NULL;
 
