@@ -21,6 +21,14 @@
 
 #include <proc/readproc.h>
 
+#ifdef HAVE_SYSEXITS_H
+#	include <sysexits.h>
+#else
+#	define EX_OK EXIT_SUCCESS
+#	define EX_OSERR EXIT_FAILURE
+#	define EX_UNAVAILABLE (EXIT_FAILURE + 1)
+#endif
+
 /* Check whether supplied process data matches session-wide dbus
  * instance. */
 bool validateproc(proc_t* const p) {
@@ -98,15 +106,15 @@ int send_notify(char* const display, char* const xauth,
 			execvp("notify-send", argv);
 			perror("execvp() returned");
 			exit(1);
-			return 1;
+			return EX_OSERR;
 			break;
 		case -1:
 			perror("fork() failed (aborting)");
-			return 1;
+			return EX_OSERR;
 			break;
 		default:
 			wait(NULL);
-			return 0;
+			return EX_OK;
 	}
 }
 
@@ -115,11 +123,11 @@ int main(int argc, char* const argv[]) {
 	 * too but readproc() shortens it and we need to getpwuid() anyway. */
 	PROCTAB *proc = openproc(PROC_FILLCOM | PROC_FILLENV);
 	proc_t *p = NULL;
-	int ret = 2;
+	int ret = EX_UNAVAILABLE;
 
 	if (!proc) {
 		fputs("FATAL: openproc() failed", stderr);
-		return 1;
+		return EX_OSERR;
 	}
 
 	while (((p = readproc(proc, p)))) {
