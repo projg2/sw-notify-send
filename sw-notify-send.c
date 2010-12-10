@@ -48,6 +48,9 @@ char *_findenv(const proc_t* const p, const char* const keystr) {
 	char* const *ap;
 	const int matchlen = strlen(keystr);
 
+	if (!p->environ)
+		return NULL;
+
 	for (ap = p->environ; *ap; ap++) {
 		if (!strncmp(*ap, keystr, matchlen))
 			return *ap;
