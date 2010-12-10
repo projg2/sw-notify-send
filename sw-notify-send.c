@@ -70,12 +70,14 @@ char *_findenv(const proc_t* const p, const char* const keystr) {
 /* Get the /proc/<pid>/root path suitable for chroot() call or return
  * NULL if chroot not possible/necessary. */
 const char* getroot(int pid) {
+#ifdef HAVE_CHROOT
 	static char fnbuf[11 + sizeof(pid) * 3];
 	char rlbuf[2];
 	snprintf(fnbuf, sizeof(fnbuf), "/proc/%d/root", pid);
 	if (readlink(fnbuf, rlbuf, sizeof(rlbuf)) != 1 || rlbuf[0] != '/')
 		return fnbuf;
 	else
+#endif
 		return NULL;
 }
 
@@ -84,8 +86,10 @@ void send_notify(char* const display, char* const xauth,
 		uid_t uid, const char* const root, char* const argv[]) {
 
 	if (fork() == 0) {
+#ifdef HAVE_CHROOT
 		if (root)
 			canfail(chroot(root));
+#endif
 		canfail(setuid(uid));
 		cantfail(putenv(display));
 		cantfail(putenv(xauth));

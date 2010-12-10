@@ -6,6 +6,7 @@ AM_INIT_AUTOMAKE([1.6 foreign dist-bzip2 no-dependencies])
 AC_PROG_CC_C99
 AC_USE_SYSTEM_EXTENSIONS
 
+AC_CHECK_FUNCS([chroot])
 AC_CHECK_LIB([proc], [readproc],,
 	[AC_MSG_ERROR([Error: required library proc not found! Please install procps.])])
 
