@@ -82,24 +82,32 @@ const char* getroot(int pid) {
 #define CANTFAIL(expr) if (expr) { perror(#expr " failed (aborting)"); exit(1); }
 
 /* Fork and call notify-send for particular dbus session. */
-void send_notify(char* const display, char* const xauth,
+int send_notify(char* const display, char* const xauth,
 		uid_t uid, const char* const root, char* const argv[]) {
 
-	if (fork() == 0) {
+	switch (fork()) {
+		case 0:
 #ifdef HAVE_CHROOT
-		if (root)
-			CANFAIL(chroot(root));
+			if (root)
+				CANFAIL(chroot(root));
 #endif
-		CANFAIL(setuid(uid));
-		CANTFAIL(putenv(display));
-		CANTFAIL(putenv(xauth));
+			CANFAIL(setuid(uid));
+			CANTFAIL(putenv(display));
+			CANTFAIL(putenv(xauth));
 
-		execvp("notify-send", argv);
-		perror("execvp() returned");
-		exit(1);
+			execvp("notify-send", argv);
+			perror("execvp() returned");
+			exit(1);
+			return 1;
+			break;
+		case -1:
+			perror("fork() failed (aborting)");
+			return 1;
+			break;
+		default:
+			wait(NULL);
+			return 0;
 	}
-
-	wait(NULL);
 }
 
 int main(int argc, char* const argv[]) {
@@ -107,6 +115,7 @@ int main(int argc, char* const argv[]) {
 	 * too but readproc() shortens it and we need to getpwuid() anyway. */
 	PROCTAB *proc = openproc(PROC_FILLCOM | PROC_FILLENV);
 	proc_t *p = NULL;
+	int ret = 2;
 
 	if (!proc) {
 		fputs("FATAL: openproc() failed", stderr);
@@ -134,7 +143,7 @@ int main(int argc, char* const argv[]) {
 				xauth = xauthbuf;
 			}
 
-			send_notify(display, xauth, p->euid, getroot(p->tgid), argv);
+			ret = send_notify(display, xauth, p->euid, getroot(p->tgid), argv);
 
 			if (xauthbuf)
 				free(xauthbuf);
@@ -142,5 +151,5 @@ int main(int argc, char* const argv[]) {
 	}
 
 	closeproc(proc);
-	return 0;
+	return ret;
 }
