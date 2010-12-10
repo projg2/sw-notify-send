@@ -10,7 +10,6 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <stdbool.h>
 #include <string.h>
 #include <libgen.h>
 
@@ -31,16 +30,16 @@
 
 /* Check whether supplied process data matches session-wide dbus
  * instance. */
-bool validateproc(proc_t* const p) {
+int validateproc(proc_t* const p) {
 	const char *procname;
 	char* const *ap;
 	if (!p->cmdline)
-		return false;
+		return 0;
 
 	/* Check whether the binary name matches. */
 	procname = basename(p->cmdline[0]);
 	if (strcmp(procname, "dbus-daemon"))
-		return false;
+		return 0;
 
 	/* Lookup supplied command-line argument list for '--session'.
 	 * We don't have to worry about additional '--system' arguments as
@@ -48,9 +47,9 @@ bool validateproc(proc_t* const p) {
 	 */
 	for (ap = &(p->cmdline[1]); *ap; ap++)
 		if (!strcmp(*ap, "--session"))
-			return true;
+			return 1;
 
-	return false;
+	return 0;
 }
 
 /* Lookup the process environment for specified keystr (a key name with
