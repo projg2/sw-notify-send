@@ -9,5 +9,6 @@ AC_USE_SYSTEM_EXTENSIONS
 AC_CHECK_LIB([proc], [readproc],,
 	[AC_MSG_ERROR([Error: required library proc not found! Please install procps.])])
 
+AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
