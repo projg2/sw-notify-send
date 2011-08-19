@@ -86,6 +86,24 @@ const char* getroot(int pid) {
 		return NULL;
 }
 
+struct used_bus {
+	char *display;
+
+	struct used_bus *next;
+};
+
+struct used_bus *used_buses = NULL;
+
+void free_used_buses(void) {
+	struct used_bus *ub, *next_ub;
+
+	for (ub = used_buses; ub; ub = next_ub) {
+		next_ub = ub->next;
+		free(ub->display);
+		free(ub);
+	}
+}
+
 #define FINDENV(p, key) _findenv(p, key "=")
 #define CANFAIL(expr) if (expr) perror(#expr " failed (ignoring)")
 #define CANTFAIL(expr) if (expr) { perror(#expr " failed (aborting)"); exit(1); }
@@ -95,6 +113,12 @@ int send_notify(char* const display, char* const xauth,
 		uid_t uid, const char* const root, NotifySession s, Notification n) {
 	int ret = 0;
 	uid_t old_ruid, old_euid, old_suid;
+	struct used_bus *ub;
+
+	for (ub = used_buses; ub; ub = ub->next) {
+		if (!strcmp(ub->display, display))
+			return EX_OK;
+	}
 
 	CANTFAIL(getresuid(&old_ruid, &old_euid, &old_suid));
 
@@ -108,8 +132,19 @@ int send_notify(char* const display, char* const xauth,
 	CANTFAIL(putenv(xauth));
 
 	notify_session_disconnect(s); /* ensure to get new connection */
-	if (!notification_send(n, s))
+	if (!notification_send(n, s)) {
+		ub = malloc(sizeof(*ub));
+		if (ub) {
+			ub->display = strdup(display);
+			if (!ub->display)
+				free(ub);
+			else {
+				ub->next = used_buses;
+				used_buses = ub;
+			}
+		}
 		ret = 1;
+	}
 
 	CANTFAIL(setresuid(old_ruid, old_euid, old_suid));
 #ifdef HAVE_CHROOT
@@ -172,6 +207,8 @@ int main(int argc, char* argv[]) {
 				free(xauthbuf);
 		}
 	}
+
+	free_used_buses();
 
 	notify_session_free(s);
 	closeproc(proc);
