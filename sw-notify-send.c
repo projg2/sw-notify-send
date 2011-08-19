@@ -94,13 +94,15 @@ const char* getroot(int pid) {
 int send_notify(char* const display, char* const xauth,
 		uid_t uid, const char* const root, NotifySession s, Notification n) {
 	int ret = 0;
-	uid_t old_uid = geteuid();
+	uid_t old_ruid, old_euid, old_suid;
+
+	CANTFAIL(getresuid(&old_ruid, &old_euid, &old_suid));
 
 #ifdef HAVE_CHROOT
 	if (root)
 		CANFAIL(chroot(root));
 #endif
-	CANFAIL(setresuid(uid, uid, old_uid));
+	CANFAIL(setresuid(uid, uid, old_euid));
 
 	CANTFAIL(putenv(display));
 	CANTFAIL(putenv(xauth));
@@ -109,7 +111,7 @@ int send_notify(char* const display, char* const xauth,
 	if (!notification_send(n, s))
 		ret = 1;
 
-	CANTFAIL(setuid(old_uid));
+	CANTFAIL(setresuid(old_ruid, old_euid, old_suid));
 #ifdef HAVE_CHROOT
 	if (root)
 		CANTFAIL(chroot(".")); /* escape the chroot */
