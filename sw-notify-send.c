@@ -100,7 +100,7 @@ int send_notify(char* const display, char* const xauth,
 	if (root)
 		CANFAIL(chroot(root));
 #endif
-	CANFAIL(seteuid(uid));
+	CANFAIL(setresuid(uid, uid, old_uid));
 
 	CANTFAIL(putenv(display));
 	CANTFAIL(putenv(xauth));
@@ -109,7 +109,7 @@ int send_notify(char* const display, char* const xauth,
 	if (!notification_send(n, s))
 		ret = 1;
 
-	CANTFAIL(seteuid(old_uid));
+	CANTFAIL(setuid(old_uid));
 #ifdef HAVE_CHROOT
 	if (root)
 		CANTFAIL(chroot(".")); /* escape the chroot */

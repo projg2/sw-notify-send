@@ -7,6 +7,8 @@ AC_PROG_CC_C89
 AC_USE_SYSTEM_EXTENSIONS
 
 AC_CHECK_FUNCS([chroot])
+AC_CHECK_FUNCS([setresuid],,
+	[AC_MSG_ERROR([One of required system library functions was not found!])])
 AC_CHECK_HEADERS([sysexits.h])
 AC_CHECK_LIB([proc], [readproc],,
 	[AC_MSG_ERROR([Error: required library proc not found! Please install procps.])])
