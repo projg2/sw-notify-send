@@ -1,7 +1,6 @@
 /* System-wide notify-send wrapper
  * (c) 2010 Michał Górny
  * Released under the terms of 3-clause BSD license
- * (link with -lproc)
  */
 
 #ifdef HAVE_CONFIG_H
@@ -19,6 +18,9 @@
 #include <unistd.h>
 
 #include <proc/readproc.h>
+
+#include <tinynotify.h>
+#include <tinynotify-cli.h>
 
 #ifdef HAVE_SYSEXITS_H
 #	include <sysexits.h>
@@ -90,45 +92,56 @@ const char* getroot(int pid) {
 
 /* Fork and call notify-send for particular dbus session. */
 int send_notify(char* const display, char* const xauth,
-		uid_t uid, const char* const root, char* const argv[]) {
+		uid_t uid, const char* const root, NotifySession s, Notification n) {
+	int ret = 0;
+	uid_t old_uid = geteuid();
 
-	switch (fork()) {
-		case 0:
 #ifdef HAVE_CHROOT
-			if (root)
-				CANFAIL(chroot(root));
+	if (root)
+		CANFAIL(chroot(root));
 #endif
-			CANFAIL(setuid(uid));
-			CANTFAIL(putenv(display));
-			CANTFAIL(putenv(xauth));
+	CANFAIL(seteuid(uid));
 
-			execvp("notify-send", argv);
-			perror("execvp() returned");
-			exit(1);
-			return EX_OSERR;
-			break;
-		case -1:
-			perror("fork() failed (aborting)");
-			return EX_OSERR;
-			break;
-		default:
-			wait(NULL);
-			return EX_OK;
-	}
+	CANTFAIL(putenv(display));
+	CANTFAIL(putenv(xauth));
+
+	notify_session_disconnect(s); /* ensure to get new connection */
+	if (!notification_send(n, s))
+		ret = 1;
+
+	CANTFAIL(seteuid(old_uid));
+#ifdef HAVE_CHROOT
+	if (root)
+		CANTFAIL(chroot(".")); /* escape the chroot */
+#endif
+
+	return ret;
 }
 
-int main(int argc, char* const argv[]) {
+int main(int argc, char* argv[]) {
 	/* We need the command line and environment. Username would be nice
 	 * too but readproc() shortens it and we need to getpwuid() anyway. */
-	PROCTAB *proc = openproc(PROC_FILLCOM | PROC_FILLENV);
+	PROCTAB *proc;
 	proc_t *p = NULL;
 	int ret = EX_UNAVAILABLE;
 
+	NotifySession s;
+	Notification n;
+
+	CANTFAIL(chdir("/"));
+
+	n = notification_new_from_cmdline(argc, argv, PACKAGE " " VERSION);
+	if (!n)
+		return EX_USAGE;
+
+	proc = openproc(PROC_FILLCOM | PROC_FILLENV);
 	if (!proc) {
 		fputs("FATAL: openproc() failed", stderr);
+		notification_free(n);
 		return EX_OSERR;
 	}
 
+	s = notify_session_new(PACKAGE, NULL);
 	while (((p = readproc(proc, p)))) {
 		if (validateproc(p)) {
 			char* const display = FINDENV(p, "DISPLAY");
@@ -150,13 +163,16 @@ int main(int argc, char* const argv[]) {
 				xauth = xauthbuf;
 			}
 
-			ret = send_notify(display, xauth, p->euid, getroot(p->tgid), argv);
+			if (send_notify(display, xauth, p->euid, getroot(p->tgid), s, n))
+				ret = EX_OK;
 
 			if (xauthbuf)
 				free(xauthbuf);
 		}
 	}
 
+	notify_session_free(s);
 	closeproc(proc);
+	notification_free(n);
 	return ret;
 }

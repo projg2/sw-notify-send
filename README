@@ -20,8 +20,9 @@ System requirements
 -------------------
 
 * The `proc` library (which can be found in the procps package),
-* the `notify-send` program (which is a part of libnotify).
+* [libtinynotify][1] with `--enable-cli`.
 
+[1]:https://github.com/mgorny/libtinynotify/
 
 How to use
 ----------
