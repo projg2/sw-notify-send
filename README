@@ -29,7 +29,7 @@ How to use
 
 sw-notify-send is only a dumb wrapper for notify-send. Thus, it doesn't
 take any arguments of its' own and passes all of them to notify-send.
-Thus, to use it you simply replace `notify-send` with `sw-notify-send`
+Thus, to use it you simply replace `tinynotify-send` with `sw-notify-send`
 in your shell script (or command line, or wherever you're going to use
 it).
 
@@ -38,11 +38,6 @@ In other words, you use it like:
 	sw-notify-send 'Test' 'Hello world!'
 
 Simple, isn't it?
-
-Please notice though that sw-notify-send doesn't do any syntax checking
-on its' own. If you run it with invalid arguments, only the actual
-notify-send will complain. And if sw-notify-send doesn't notice any
-running notification daemon, you won't see any complaints at all!
 
 And as you might have expected, sw-notify-send requires a lot
 of privileges (details below). Thus, if run using a regular user, it
@@ -59,15 +54,14 @@ the `/proc` filesystem) looking for anything looking like
 a DBus session bus. And by 'looking like', I mean having `dbus-daemon`
 as the basename and `--session` among its arguments.
 
-For every one it finds, it tries to grab the access details and execute
-`notify-send`. It tries to preserve DISPLAY and XAUTHORITY, and calls
-`setuid()` to get the identity of that user -- and that should be enough
+For every one it finds, it tries to grab the access details and send
+the notification. It tries to preserve DISPLAY and XAUTHORITY, and calls
+`setresuid()` to get the identity of that user -- and that should be enough
 for dbus to let us in.
 
 In addition to that, sw-notify-send also supports having
 the notification daemon running in a chroot. If it founds one doing so
 (looking at the `root` procfs entry), it calls `chroot()` to enter
 the chroot.
-
 
 <!-- vim:se syn=markdown : -->
