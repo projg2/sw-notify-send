@@ -1,6 +1,10 @@
 sw-notify-send -- a system-wide notify-send wrapper
 ===================================================
 
+Please note that this project is no longer maintained.
+
+Please use libtinynotify-systemwide & tinynotify-send instead.
+
 
 A quick introduction
 --------------------
